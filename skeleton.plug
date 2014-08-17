@@ -1,7 +1,7 @@
 [Core]
-Name = Skeleton
-Module = skeleton
+Name = Xup
+Module = Xup
     
 [Documentation]
-Description = An Err plugin skeleton
+Description = A plugin for tracking member availability.
 
