@@ -1,6 +1,6 @@
 [Core]
 Name = Xup
-Module = Xup
+Module = xup
     
 [Documentation]
 Description = A plugin for tracking member availability.
