@@ -16,7 +16,7 @@ class Xup(BotPlugin):
 
     @botcmd(split_args_with=None)
     def xup(self, mess, args):
-        """A command which simply returns 'Example'"""
+        """Add yourself to the ready list, you can include an optional message."""
 
         user = str(mess.getFrom().getNode())
         xup_args = {'user': user,'args': args, 'message': mess.getBody(),'time': datetime.utcnow()}
@@ -27,7 +27,7 @@ class Xup(BotPlugin):
 
     @botcmd(template="xup_list")
     def xup_list(self, mess, args):
-
+        """Show everyone who is on the ready list."""
         now = datetime.utcnow()
 
         members = self.shelf.users.values()
@@ -40,3 +40,16 @@ class Xup(BotPlugin):
 
         return {'members': members}
 
+    @botcmd(template='xup_ping', split_args_with=None)
+    def xup_ping(self, mess, args):
+        """Ping everyone who has xed-up"""
+        return ",".join(sorted(self.shelf.users.keys()))
+
+    @bomcmd(split_args_with=None)
+    def xup_remove(self, mess, args):
+        """Remove yourself from the ready list"""
+        user = str(mess.getFrom().getNode())
+
+        del self.shelf.users[user]
+
+        return "Done."
