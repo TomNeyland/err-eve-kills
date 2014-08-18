@@ -18,7 +18,7 @@ class Xup(BotPlugin):
     def xup(self, mess, args):
         """A command which simply returns 'Example'"""
 
-        user = mess.getFrom()
+        user = str(mess.getFrom())
         xup_args = {'user': user,'args': args, 'message': mess.getBody(),'time': datetime.utcnow()}
 
         self.shelf.users[user] = xup_args
