@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block body %}
-These people might play eve:
+<p>These people might play eve:</p>
 {% for member in members %}
-<span style="font-style:bold;">{{member.user}}</span>: {{member.args}} {{member.time_ago}}<br>
+<p><em>{{member.user}}</em>: {{member.args}} {{member.time_ago}}</p>
 {% endfor %}
 {% endblock %}
 
