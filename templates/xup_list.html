@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+These people might play eve:
+{% for member in members %}
+{{member.name}}: {{member.message}} {{member.time_ago}}
+{% endfor %}
+{% endblock %}
+
+
