@@ -23,7 +23,7 @@ class Xup(BotPlugin):
 
         self.shelf.users[user] = xup_args
 
-        return "Added: %s" % (self.shelf.users[user],)
+        return "Done."
 
     @botcmd(template="xup_list")
     def xup_list(self, mess, args):
