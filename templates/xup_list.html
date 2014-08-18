@@ -2,7 +2,7 @@
 {% block body %}
 These people might play eve:
 {% for member in members %}
-{{member.user}}: {{member.args}} {{member.time_ago}}
+<span style="font-style:bold;">{{member.user}}</span>: {{member.args}} {{member.time_ago}}<br>
 {% endfor %}
 {% endblock %}
 
