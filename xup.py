@@ -19,7 +19,7 @@ class Xup(BotPlugin):
         """A command which simply returns 'Example'"""
 
         user = mess.getFrom()
-        xup_args = {'user': user,'args': args, 'time': datetime.utcnow()}
+        xup_args = {'user': user,'args': args, 'message': mess.getBody(),'time': datetime.utcnow()}
 
         self.shelf.users[user] = xup_args
 
@@ -35,7 +35,8 @@ class Xup(BotPlugin):
         members = sorted(members, key=lambda member: member['time'])
 
         for member in members:
-            member['time_ago'] = ago.human(member['time'] - now)
+            member['message'] = member['message']
+            member['time_ago'] = ago.human(now - member['time'])
 
         return {'members': members}
 
