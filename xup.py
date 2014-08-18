@@ -25,7 +25,7 @@ class Xup(BotPlugin):
 
         return "Added: %s" % (self.shelf.users[user],)
 
-    @botcmd(template="xup_list"):
+    @botcmd(template="xup_list")
     def xup_list(self, mess, args):
 
         now = datetime.utcnow()
