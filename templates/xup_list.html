@@ -2,7 +2,7 @@
 {% block body %}
 <p>These people might play eve:</p>
 {% for member in members %}
-<p><em>{{member.user}}</em>: {{member.args}} {{member.time_ago}}</p>
+<p><strong>{{member.user}}</strong>: <q>{{member.args}}</q> <em>({{member.time_ago}})</em></p>
 {% endfor %}
 {% endblock %}
 
