@@ -45,7 +45,7 @@ class Xup(BotPlugin):
         """Ping everyone who has xed-up"""
         return ",".join(sorted(self.shelf.users.keys()))
 
-    @bomcmd(split_args_with=None)
+    @botcmd(split_args_with=None)
     def xup_remove(self, mess, args):
         """Remove yourself from the ready list"""
         user = str(mess.getFrom().getNode())
