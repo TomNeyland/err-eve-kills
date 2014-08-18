@@ -43,7 +43,7 @@ class Xup(BotPlugin):
     @botcmd(split_args_with=None)
     def xup_ping(self, mess, args):
         """Ping everyone who has xed-up"""
-        return ",".join(sorted(self.shelf.users.keys()))
+        return " ".join(sorted(self.shelf.users.keys()))
 
     @botcmd(split_args_with=None)
     def xup_remove(self, mess, args):
