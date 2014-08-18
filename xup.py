@@ -7,7 +7,7 @@ class Xup(BotPlugin):
     #max_err_version = '2.0.0' # Optional, but recommended
 
     def activate(self):
-        super(Skeleton, self).activate()
+        super(Xup, self).activate()
 
         if not hasattr(self.shelf, 'users'):
             self.shelf.users = {}
