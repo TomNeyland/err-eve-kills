@@ -1,12 +1,9 @@
-err-skeleton
+err-xup
 ============
 
-A skeleton for Err plugins. Use this to get started quickly.
-
-Fork & rename, or just download the files, then edit to suit
-your own tastes.
+Tracks members who 'xup' as being ready to play.
 
 Licence
 -------
 
-Released into public domain. Do with it as you wish!
+TBD
