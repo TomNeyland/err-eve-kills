@@ -3,12 +3,20 @@ err-eve-kills
 
 Announces when people are killed.
 
+Do this one time to set the channel:  
+    
     !kill announce: Set the bot to announce kills to this channel.  
+
+Do this for each character to watch:  
+    
+    !kill watch: Start watching an eve guy for kills/losses.  Specify a character name.  
+
+Other, less used commands:
+
     !kill check: Run a check for kills/losses right now. You shouldn't ever have to do this.    
     !kill list: Show everyone who is on the watch list.  
     !kill reset: Reset the last kill ID  
     !kill unwatch: Remove a character from the watch list  
-    !kill watch: Start watching an eve guy for kills/losses.  Specify a character name.  
 
 
 Licence
