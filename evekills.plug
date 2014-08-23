@@ -1,0 +1,7 @@
+[Core]
+Name = EveKills
+Module = evekills
+    
+[Documentation]
+Description = A plugin for shaming people who die
+

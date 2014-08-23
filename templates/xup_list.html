@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-{% block body %}
-<p>These people might play eve:</p>
-{% for member in members %}
-<div><p><strong>{{member.user}}</strong>: <q>{{member.message}}</q> <em>({{member.time_ago}})</em></p></div>
-{% endfor %}
-{% endblock %}
-
-
