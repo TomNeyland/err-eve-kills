@@ -28,6 +28,8 @@ class EveKills(BotPlugin):
             self["users"] = {}
         if not "lastKill" in self:
             self["lastKill"] = 0
+        if not "stats" in self:
+            self["stats"] = {"checks":0, "lost":0, "killed":0, "errors":0}
 
     def _get_characer_id(self, name):
         url = "http://api.eve-online.com/eve/CharacterID.xml.aspx?names=%s" % quote(name)
@@ -98,26 +100,40 @@ class EveKills(BotPlugin):
     def _check_kills(self):
         userids = self["users"].keys()        
         kills = []
-        for i in range(0, len(userids), 10):
-            userlist = userids[i:i+10]
-            kills.extend( self._check_kills_for_users(userlist, "kills"))                  
-            kills.extend( self._check_kills_for_users(userlist, "losses"))
-        kills = self._remove_dupes(kills)
-        formattedKills = []        
-        maxKillId = 0
-        lastKill = self["lastKill"]
-        for kill in kills:   # kills = [self._format_kill(kill) for kill in kills]           
-            killId = int(kill["killID"])
-            if killId > lastKill:
-                formattedKills.append(self._format_kill(kill))
-                maxKillId = max(maxKillId, killId)
+        stats = self["stats"]  #{"checks":0, "lost":0, "killed":0, "errors":0}
+        stats["checks"] += 1
+        try:
+            for i in range(0, len(userids), 10):
+                userlist = userids[i:i+10]
+                kills.extend( self._check_kills_for_users(userlist, "kills"))                  
+                kills.extend( self._check_kills_for_users(userlist, "losses"))
+            kills = self._remove_dupes(kills)
+            formattedKills = []        
+            maxKillId = 0
+            lastKill = self["lastKill"]
+            for kill in kills:   # kills = [self._format_kill(kill) for kill in kills]           
+                killId = int(kill["killID"])
+                if killId > lastKill:
+                    formattedKills.append(self._format_kill(kill))
+                    maxKillId = max(maxKillId, killId)
+                    loss = victimId in self["users"].keys()
+                    if loss:
+                        stats["lost"] += 1
+                    else:
+                        stats["killed"] += 1
 
-        self["lastKill"] = max(maxKillId, lastKill)
-        
-        if len(formattedKills) > 0:
-            body = "\n".join(formattedKills)        
-            self.send(self["channel"], body, message_type="groupchat")
+            self["lastKill"] = max(maxKillId, lastKill)
+            self["stats"] = stats
+            if len(formattedKills) > 0:
+                body = "\n".join(formattedKills)        
+                self.send(self["channel"], body, message_type="groupchat")
+        except:
+            stats["errors"] += 1
     
+    @botcmd(template="stats")
+    def stats(self, mess, args):
+        return self["stats"]
+
     @botcmd(split_args_with=None)
     def kill_reset(self, mess, args):
         """Reset the last kill ID"""
