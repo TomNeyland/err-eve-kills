@@ -87,7 +87,7 @@ class EveKills(BotPlugin):
         url = "https://zkillboard.com/kill/%s/" % kill["killID"]
         value = self._value(kill)
 
-        return "%s | %s (%s) | %s | %s isk | %s" % \
+        return "%s | %s (%s) | %s | %s isk | %s | %s" % \
             (verb, 
              kill["victim"]["characterName"], 
              kill["victim"]["allianceName"],
@@ -122,13 +122,13 @@ class EveKills(BotPlugin):
                     else:
                         stats["killed"] += 1
 
-            self["lastKill"] = max(maxKillId, lastKill)
-            self["stats"] = stats
+            self["lastKill"] = max(maxKillId, lastKill)            
             if len(formattedKills) > 0:
                 body = "\n".join(formattedKills)        
                 self.send(self["channel"], body, message_type="groupchat")
         except:
             stats["errors"] += 1
+        self["stats"] = stats
     
     @botcmd(template="stats")
     def kill_stats(self, mess, args):
