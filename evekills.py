@@ -26,7 +26,7 @@ class EveKills(BotPlugin):
 
     def activate(self):
         super(EveKills, self).activate()
-        self.start_poller(120, self._check_kills)        
+        self.start_poller(300, self._check_kills)        
         if not "users" in self:
             self["users"] = {}
         if not "lastKill" in self:
