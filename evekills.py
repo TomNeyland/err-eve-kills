@@ -17,8 +17,9 @@ if PY2:
 else:
     from urllib.request import urlopen, quote, Request
 
-# from itemtypes import eveTypeIds
 DEBUG = False
+
+POLL_SECONDS = 300
 
 class EveKills(BotPlugin):
     #min_err_version = '1.6.0' # Optional, but recommended
@@ -26,7 +27,7 @@ class EveKills(BotPlugin):
 
     def activate(self):
         super(EveKills, self).activate()
-        self.start_poller(300, self._check_kills)        
+        self.start_poller(POLL_SECONDS, self._check_kills)        
         if not "users" in self:
             self["users"] = {}
         if not "lastKill" in self:
@@ -53,7 +54,7 @@ class EveKills(BotPlugin):
         if DEBUG:
             seconds = 86400
         else:
-            seconds = 900
+            seconds = POLL_SECONDS * 2  # x2 is to guarentee we don't miss any right on the boundries
         url = "https://zkillboard.com/api/kills/characterID/%s/pastSeconds/%d/%s/" % (",".join(userlist), seconds, mailtype)        
         # print url
         response = urlopen(url)
@@ -77,7 +78,7 @@ class EveKills(BotPlugin):
     @staticmethod
     def _value(kill):
         try:
-            print kill
+            # print kill
             strValue = kill["zkb"]["totalValue"]
             value = round(float(strValue))
             return humanize.intword(value)
