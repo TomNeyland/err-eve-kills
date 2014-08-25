@@ -7,6 +7,9 @@ import ago
 import json
 import humanize
 
+import traceback
+import sys
+
 from errbot import botcmd, BotPlugin, PY2
 
 if PY2:
@@ -87,7 +90,7 @@ class EveKills(BotPlugin):
         url = "https://zkillboard.com/kill/%s/" % kill["killID"]
         value = self._value(kill)
 
-        return "%s | %s (%s) | %s | %s isk | %s | %s" % \
+        return "%s | %s (%s) | %s | %s isk | %s" % \
             (verb, 
              kill["victim"]["characterName"], 
              kill["victim"]["allianceName"],
@@ -128,6 +131,8 @@ class EveKills(BotPlugin):
                 self.send(self["channel"], body, message_type="groupchat")
         except:
             stats["errors"] += 1
+            print traceback.format_exc()
+
         self["stats"] = stats
     
     @botcmd(template="stats")
