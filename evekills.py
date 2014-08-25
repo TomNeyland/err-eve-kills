@@ -26,7 +26,7 @@ class EveKills(BotPlugin):
 
     def activate(self):
         super(EveKills, self).activate()
-        self.start_poller(45, self._check_kills)        
+        self.start_poller(120, self._check_kills)        
         if not "users" in self:
             self["users"] = {}
         if not "lastKill" in self:
@@ -77,10 +77,12 @@ class EveKills(BotPlugin):
     @staticmethod
     def _value(kill):
         try:
+            print kill
             strValue = kill["zkb"]["totalValue"]
             value = round(float(strValue))
             return humanize.intword(value)
         except:
+            print traceback.format_exc()
             return "???"
 
     def _format_kill(self, kill):
@@ -116,6 +118,7 @@ class EveKills(BotPlugin):
             lastKill = self["lastKill"]
             for kill in kills:   # kills = [self._format_kill(kill) for kill in kills]           
                 killId = int(kill["killID"])
+                victimId = int(kill["victim"]["characterID"])
                 if killId > lastKill:
                     formattedKills.append(self._format_kill(kill))
                     maxKillId = max(maxKillId, killId)
