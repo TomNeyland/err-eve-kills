@@ -2,7 +2,7 @@
 {% block body %}
 <p>Watching for these guys:</p>
 {% for member in members %}
-  <div><p><strong>{{member.character_name}}</strong> <em>(Added {{member.time_ago}})</em></p></div>
+  <p><strong>{{member.character_name}}</strong> <em>(Added {{member.time_ago}})</em></p>
 {% endfor %}
 {% endblock %}
 

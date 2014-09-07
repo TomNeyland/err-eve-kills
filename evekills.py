@@ -9,6 +9,11 @@ import humanize
 
 import traceback
 import sys
+import stomp
+import logging
+
+logging.basicConfig() 
+logging.getLogger("stomp.py").setLevel(logging.WARNING)
 
 from errbot import botcmd, BotPlugin, PY2
 
@@ -27,13 +32,75 @@ class EveKills(BotPlugin):
 
     def activate(self):
         super(EveKills, self).activate()
-        self.start_poller(POLL_SECONDS, self._check_kills)        
+
+        self.resetStomp()
+        self.seen = []
         if not "users" in self:
             self["users"] = {}
-        if not "lastKill" in self:
-            self["lastKill"] = 0
         if not "stats" in self:
             self["stats"] = {"checks":0, "lost":0, "killed":0, "errors":0}
+
+    def resetStomp(self):
+        if "conn" in self:
+            self.conn.disconnect()
+        self.conn = stomp.Connection(host_and_ports=(("eve-kill.net",61613),) )
+        self.conn.set_listener('', self)          
+        self.conn.start()
+        self.conn.connect(username="guest", passcode="guest")
+        self.conn.subscribe(destination="/topic/kills", id=1, ack='auto')
+        # I get errors after the 15th subscribe, I think the stomp server limits us
+        # so I'll listen to all kills instead.
+        # for userid in self["users"].keys():
+        #     print "/topic/involved.character.%d" % userid
+        #     self.conn.subscribe(destination="/topic/involved.character.%d", id=1, ack='auto')
+
+
+    def on_error(self, headers, message):
+        # STOMP error
+        print('received an error %s' % message)
+
+    def _our_guys(self, kill):
+        """ Returns the guy if one of our guys is on the mail"""
+        userids = self["users"].keys()
+        if kill["victim"]["characterID"] in userids:
+            return self["users"][kill["victim"]["characterID"]]
+        for attacker in kill["attackers"]:
+            if attacker["characterID"] in userids:
+                return self["users"][attacker["characterID"]]
+        return None
+
+
+
+    def on_message(self, headers, message):
+        # STOMP message                      
+        kills = []
+        stats = self["stats"]  #{"checks":0, "lost":0, "killed":0, "errors":0}
+        stats["checks"] += 1
+
+        kill = json.loads(message)
+
+        killId = int(kill["killID"])
+        if killId in self.seen:
+            return  # we've already seen this killmail, ignore it.
+        self.seen.append(killId)
+
+        guy = self._our_guys(kill)
+        if guy is None:
+            self["stats"] = stats
+            return  # Killmail didn't have anyone we care about on it
+
+        victimId = int(kill["victim"]["characterID"])
+        loss = victimId in self["users"].keys()
+        if loss:  # For the !kill stats command...
+            stats["lost"] += 1
+        else:
+            stats["killed"] += 1
+
+        formattedKill = self._format_kill(kill, loss, guy)
+
+        self.send(self["channel"], formattedKill, message_type="groupchat") # Announce it!
+        self["stats"] = stats  # Save our new stats to the shelf
+
 
     def _get_characer_id(self, name):
         url = "http://api.eve-online.com/eve/CharacterID.xml.aspx?names=%s" % quote(name)
@@ -47,27 +114,6 @@ class EveKills(BotPlugin):
         if id == 0:
             raise Exception("Character not found")        
         return id
-
-    @staticmethod
-    def _check_kills_for_users(userlist, mailtype):
-        userlist = [str(u) for u in userlist]
-        if DEBUG:
-            seconds = 86400
-        else:
-            seconds = POLL_SECONDS * 2  # x2 is to guarentee we don't miss any right on the boundries
-        url = "https://zkillboard.com/api/kills/characterID/%s/pastSeconds/%d/%s/" % (",".join(userlist), seconds, mailtype)        
-        # print url
-        response = urlopen(url)
-        results = json.loads(response.read())
-        return results
-
-    @staticmethod
-    def _remove_dupes(kills):
-        s = []
-        for kill in kills:
-            if kill not in s:
-                s.append(kill)
-        return s
 
     @staticmethod
     def _ship_name(itemId):
@@ -86,13 +132,12 @@ class EveKills(BotPlugin):
             print traceback.format_exc()
             return "???"
 
-    def _format_kill(self, kill):
-        victimId = int(kill["victim"]["characterID"])
-        verb = "LOSS" if victimId in self["users"].keys() else "KILL"
+    def _format_kill(self, kill, loss, guy):
+        """ Format the kill JSON into a nice string we can output"""        
+        verb = "LOSS" if loss else "KILL"
         ship = self._ship_name(int(kill["victim"]["shipTypeID"]))
         url = "https://zkillboard.com/kill/%s/" % kill["killID"]
-        value = self._value(kill)
-
+        value = self._value(kill)        
         return "%s | %s (%s) | %s | %s isk | %s" % \
             (verb, 
              kill["victim"]["characterName"], 
@@ -101,43 +146,6 @@ class EveKills(BotPlugin):
              value,
              url
             )
-            
-
-    def _check_kills(self):
-        userids = self["users"].keys()        
-        kills = []
-        stats = self["stats"]  #{"checks":0, "lost":0, "killed":0, "errors":0}
-        stats["checks"] += 1
-        try:
-            for i in range(0, len(userids), 10):
-                userlist = userids[i:i+10]
-                kills.extend( self._check_kills_for_users(userlist, "kills"))                  
-                kills.extend( self._check_kills_for_users(userlist, "losses"))
-            kills = self._remove_dupes(kills)
-            formattedKills = []        
-            maxKillId = 0
-            lastKill = self["lastKill"]
-            for kill in kills:   # kills = [self._format_kill(kill) for kill in kills]           
-                killId = int(kill["killID"])
-                victimId = int(kill["victim"]["characterID"])
-                if killId > lastKill:
-                    formattedKills.append(self._format_kill(kill))
-                    maxKillId = max(maxKillId, killId)
-                    loss = victimId in self["users"].keys()
-                    if loss:
-                        stats["lost"] += 1
-                    else:
-                        stats["killed"] += 1
-
-            self["lastKill"] = max(maxKillId, lastKill)            
-            if len(formattedKills) > 0:
-                body = "\n".join(formattedKills)        
-                self.send(self["channel"], body, message_type="groupchat")
-        except:
-            stats["errors"] += 1
-            print traceback.format_exc()
-
-        self["stats"] = stats
     
     @botcmd(template="stats")
     def kill_stats(self, mess, args):
@@ -145,23 +153,17 @@ class EveKills(BotPlugin):
 
     @botcmd(split_args_with=None)
     def kill_reset(self, mess, args):
-        """Reset the last kill ID"""
-        lk = self["lastKill"]
-        self["lastKill"] = 0
-        return "Was %d now 0" % lk
+        """Reset the connection"""
+        self.resetStomp()
+        self.seen = []
+        self["stats"] = {"checks":0, "lost":0, "killed":0, "errors":0}
+        return "Reset"
 
     @botcmd(split_args_with=None)
     def kill_announce(self, mess, args):
         """Set the bot to announce kills to this channel."""
         self["channel"] = mess.getFrom()
         return "I'll announce to this channel (%s) for now on." % self["channel"]
-
-    @botcmd(split_args_with=None)
-    def kill_check(self, mess, args):
-        """Run a check for kills/losses right now. You shouldn't ever have to do this.  
-           It's automatic. Just stop.  Don't type it and walk away.  """
-        self._check_kills()
-        return None
 
     @botcmd(split_args_with=None)
     def kill_watch(self, mess, args):
@@ -183,11 +185,8 @@ class EveKills(BotPlugin):
     def kill_list(self, mess, args):
         """Show everyone who is on the watch list."""
         now = datetime.utcnow()
-
         members = self["users"].values()
-
-        members = sorted(members, key=lambda member: member['time'])
-
+        members = sorted(members, key=lambda member: member['character_name'])
         for member in members:            
             member['time_ago'] = ago.human(now - member['time'])
 
@@ -204,11 +203,12 @@ class EveKills(BotPlugin):
         except Exception as e:
             return "Something went wrong - %s" % e.message
 
-        if characterId in self.shelf.users:
+        if characterId in self["users"]:
             del self["users"][characterId]
             return "Done."
         else:
             return "Couldn't find that person."
+
 
 
 # yeah, I know... it's stupid to have this in here, but I was having 

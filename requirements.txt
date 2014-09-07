@@ -1,3 +1,4 @@
 ago
 lxml
 humanize
+stomp.py
