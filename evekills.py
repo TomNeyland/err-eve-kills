@@ -68,7 +68,7 @@ class EveKills(BotPlugin):
         self["stats"] = stats
         self.resetStomp()
 
-    def _our_guys(self, kill):
+    def _our_guys(self, kill):        
         """ Returns the guy if we care about him on the mail"""
         userids = self["users"].keys()
         if kill["victim"]["characterID"] in userids:
@@ -89,6 +89,7 @@ class EveKills(BotPlugin):
         stats["checks"] += 1
 
         kill = json.loads(message)
+        # print kill
 
         killId = int(kill["killID"])
         if killId in self.seen:
@@ -136,12 +137,14 @@ class EveKills(BotPlugin):
     def _value(kill):
         try:
             # print kill
-            strValue = kill["zkb"]["totalValue"]
-            value = round(float(strValue))
-            return humanize.intword(value)
-        except:
-            print traceback.format_exc()
-            return "???"
+            if "zkb" in kill:
+                strValue = kill["zkb"]["totalValue"]
+                value = round(float(strValue))
+                return humanize.intword(value)
+            else:                
+                return None
+        except:            
+            return None
 
     def _format_kill(self, kill, loss, guy):
         """ Format the kill JSON into a nice string we can output"""        
@@ -149,14 +152,23 @@ class EveKills(BotPlugin):
         ship = self._ship_name(int(kill["victim"]["shipTypeID"]))
         url = "https://zkillboard.com/kill/%s/" % kill["killID"]
         value = self._value(kill)        
-        return "%s | %s (%s) | %s | %s isk | %s" % \
-            (verb, 
-             kill["victim"]["characterName"], 
-             kill["victim"]["allianceName"],
-             ship,
-             value,
-             url
-            )
+        if value is None:
+            return "%s | %s (%s) | %s | %s" % \
+                (verb, 
+                 kill["victim"]["characterName"], 
+                 kill["victim"]["allianceName"],
+                 ship,                 
+                 url
+                )            
+        else:
+            return "%s | %s (%s) | %s | %s isk | %s" % \
+                (verb, 
+                 kill["victim"]["characterName"], 
+                 kill["victim"]["allianceName"],
+                 ship,
+                 value,
+                 url
+                )
     
     @botcmd(template="stats")
     def kill_stats(self, mess, args):
