@@ -33,7 +33,7 @@ class EveKills(BotPlugin):
 
         self.resetStomp()
         self.seen = []
-        self.recent = []
+        self["recent"] = []
 
         # The stomp stream has been unreliable over long periods of time,
         # with random disconnects and no errors reported.  Now re-connecting
@@ -114,8 +114,8 @@ class EveKills(BotPlugin):
 
         formattedKill = self._format_kill(kill, loss, guy)
 
-        self.recent.append(formattedKill)
-        self.recent = self.recent[-10:]  # Remember the latest 10
+        self["recent"].append(formattedKill)
+        self["recent"] = self.["recent"][-10:]  # Remember the latest 10
 
         self.send(self["channel"], formattedKill, message_type="groupchat") # Announce it!
         self["stats"] = stats  # Save our new stats to the shelf
@@ -180,7 +180,7 @@ class EveKills(BotPlugin):
     @botcmd(template="recent")
     def kill_recent(self, mess, args):
         """Display the 10 most recent kills we've reported on"""        
-        return {'kills':self.recent}
+        return {'kills':self["recent"]}
 
     @botcmd(template="stats")
     def kill_stats(self, mess, args):
