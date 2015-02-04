@@ -33,13 +33,15 @@ class EveKills(BotPlugin):
 
         self.resetStomp()
         self.seen = []
-        self["recent"] = []
+        
 
         # The stomp stream has been unreliable over long periods of time,
         # with random disconnects and no errors reported.  Now re-connecting
         # every half hour.        
         self.start_poller(1800, self.resetStomp)
 
+        if not "recent" in self:
+            self["recent"] = []
 
         if not "users" in self:
             self["users"] = {}
@@ -115,7 +117,7 @@ class EveKills(BotPlugin):
         formattedKill = self._format_kill(kill, loss, guy)
 
         self["recent"].append(formattedKill)
-        self["recent"] = self.["recent"][-10:]  # Remember the latest 10
+        self["recent"] = self["recent"][-10:]  # Remember the latest 10
 
         self.send(self["channel"], formattedKill, message_type="groupchat") # Announce it!
         self["stats"] = stats  # Save our new stats to the shelf

@@ -1,7 +1,5 @@
 {% extends "base.html" %}
 {% block body %}
 <p>Watching for these guys:</p>
-{% for member in members %}
-  <p><strong>{{member.character_name}}</strong></p>
-{% endfor %}
+{% for member in members %}<strong>{{member.character_name}}</strong>, {% endfor %}
 {% endblock %}
