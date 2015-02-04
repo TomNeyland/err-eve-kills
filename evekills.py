@@ -33,11 +33,13 @@ class EveKills(BotPlugin):
 
         self.resetStomp()
         self.seen = []
+        self.recent = []
 
         # The stomp stream has been unreliable over long periods of time,
         # with random disconnects and no errors reported.  Now re-connecting
         # every half hour.        
         self.start_poller(1800, self.resetStomp)
+
 
         if not "users" in self:
             self["users"] = {}
@@ -94,7 +96,9 @@ class EveKills(BotPlugin):
         killId = int(kill["killID"])
         if killId in self.seen:
             return  # we've already seen this killmail, ignore it.
+        
         self.seen.append(killId)
+        self.seen = self.seen[-500:]  # only remember the last 500 kills
 
         guy = self._our_guys(kill)
         if guy is None:
@@ -109,6 +113,9 @@ class EveKills(BotPlugin):
             stats["killed"] += 1
 
         formattedKill = self._format_kill(kill, loss, guy)
+
+        self.recent.append(formattedKill)
+        self.recent = self.recent[-10:]  # Remember the latest 10
 
         self.send(self["channel"], formattedKill, message_type="groupchat") # Announce it!
         self["stats"] = stats  # Save our new stats to the shelf
@@ -170,8 +177,14 @@ class EveKills(BotPlugin):
                  url
                 )
     
+    @botcmd(template="recent")
+    def kill_recent(self, mess, args):
+        """Display the 10 most recent kills we've reported on"""        
+        return {'kills':self.recent}
+
     @botcmd(template="stats")
     def kill_stats(self, mess, args):
+        """Display some stats about kills we've seen."""
         return self["stats"]
 
     @botcmd(split_args_with=None)
@@ -180,7 +193,7 @@ class EveKills(BotPlugin):
         self.resetStomp()
         self.seen = []
         self["stats"] = {"checks":0, "lost":0, "killed":0, "errors":0}
-        return "Reset"
+        return "Reset Complete"
 
     @botcmd(split_args_with=None)
     def kill_announce(self, mess, args):
