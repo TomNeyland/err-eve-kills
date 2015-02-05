@@ -116,8 +116,12 @@ class EveKills(BotPlugin):
 
         formattedKill = self._format_kill(kill, loss, guy)
 
-        self["recent"].append(formattedKill)
-        self["recent"] = self["recent"][-10:]  # Remember the latest 10
+        recent = self["recent"]        
+        recent.append(formattedKill)
+        # print recent
+        recent = recent[-10:]
+        self["recent"] = recent        
+        # print self["recent"]
 
         self.send(self["channel"], formattedKill, message_type="groupchat") # Announce it!
         self["stats"] = stats  # Save our new stats to the shelf
