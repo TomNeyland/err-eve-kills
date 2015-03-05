@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block body %}
+<p>Recent kills:</p>
+{% for kill in kills %}
+  {{kill}}<br/>
+{% endfor %}
+{% endblock %}

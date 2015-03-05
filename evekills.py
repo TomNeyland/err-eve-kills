@@ -24,8 +24,6 @@ else:
 
 DEBUG = False
 
-POLL_SECONDS = 300
-
 class EveKills(BotPlugin):
     #min_err_version = '1.6.0' # Optional, but recommended
     #max_err_version = '2.0.0' # Optional, but recommended
@@ -35,12 +33,24 @@ class EveKills(BotPlugin):
 
         self.resetStomp()
         self.seen = []
+        
+
+        # The stomp stream has been unreliable over long periods of time,
+        # with random disconnects and no errors reported.  Now re-connecting
+        # every half hour.        
+        self.start_poller(1800, self.resetStomp)
+
+        if not "recent" in self:
+            self["recent"] = []
+
         if not "users" in self:
             self["users"] = {}
+
         if not "stats" in self:
             self["stats"] = {"checks":0, "lost":0, "killed":0, "errors":0}
 
     def resetStomp(self):
+        logging.info('Connecting to eve-kill...')        
         if "conn" in self:
             self.conn.disconnect()
         self.conn = stomp.Connection(host_and_ports=(("eve-kill.net",61613),) )
@@ -57,19 +67,24 @@ class EveKills(BotPlugin):
 
     def on_error(self, headers, message):
         # STOMP error
-        print('received an error %s' % message)
+        stats = self["stats"]
+        stats["errors"] += 1
+        self["stats"] = stats
+        self.resetStomp()
 
-    def _our_guys(self, kill):
-        """ Returns the guy if one of our guys is on the mail"""
+    def _our_guys(self, kill):        
+        """ Returns the guy if we care about him on the mail"""
         userids = self["users"].keys()
         if kill["victim"]["characterID"] in userids:
-            return self["users"][kill["victim"]["characterID"]]
+            guy = self["users"][kill["victim"]["characterID"]]
+            if (not "type" in guy) or (guy["type"] == "all") or (guy["type"] == "loss"):
+                return guy
         for attacker in kill["attackers"]:
             if attacker["characterID"] in userids:
-                return self["users"][attacker["characterID"]]
+                guy = self["users"][attacker["characterID"]]
+                if (not "type" in guy) or (guy["type"] == "all") or (guy["type"] == "kill"):
+                    return guy
         return None
-
-
 
     def on_message(self, headers, message):
         # STOMP message                      
@@ -78,11 +93,14 @@ class EveKills(BotPlugin):
         stats["checks"] += 1
 
         kill = json.loads(message)
+        # print kill
 
         killId = int(kill["killID"])
         if killId in self.seen:
             return  # we've already seen this killmail, ignore it.
+        
         self.seen.append(killId)
+        self.seen = self.seen[-500:]  # only remember the last 500 kills
 
         guy = self._our_guys(kill)
         if guy is None:
@@ -97,6 +115,13 @@ class EveKills(BotPlugin):
             stats["killed"] += 1
 
         formattedKill = self._format_kill(kill, loss, guy)
+
+        recent = self["recent"]        
+        recent.append(formattedKill)
+        # print recent
+        recent = recent[-10:]
+        self["recent"] = recent        
+        # print self["recent"]
 
         self.send(self["channel"], formattedKill, message_type="groupchat") # Announce it!
         self["stats"] = stats  # Save our new stats to the shelf
@@ -125,12 +150,14 @@ class EveKills(BotPlugin):
     def _value(kill):
         try:
             # print kill
-            strValue = kill["zkb"]["totalValue"]
-            value = round(float(strValue))
-            return humanize.intword(value)
-        except:
-            print traceback.format_exc()
-            return "???"
+            if "zkb" in kill:
+                strValue = kill["zkb"]["totalValue"]
+                value = round(float(strValue))
+                return humanize.intword(value)
+            else:                
+                return None
+        except:            
+            return None
 
     def _format_kill(self, kill, loss, guy):
         """ Format the kill JSON into a nice string we can output"""        
@@ -138,17 +165,32 @@ class EveKills(BotPlugin):
         ship = self._ship_name(int(kill["victim"]["shipTypeID"]))
         url = "https://zkillboard.com/kill/%s/" % kill["killID"]
         value = self._value(kill)        
-        return "%s | %s (%s) | %s | %s isk | %s" % \
-            (verb, 
-             kill["victim"]["characterName"], 
-             kill["victim"]["allianceName"],
-             ship,
-             value,
-             url
-            )
+        if value is None:
+            return "%s | %s (%s) | %s | %s" % \
+                (verb, 
+                 kill["victim"]["characterName"], 
+                 kill["victim"]["allianceName"],
+                 ship,                 
+                 url
+                )            
+        else:
+            return "%s | %s (%s) | %s | %s isk | %s" % \
+                (verb, 
+                 kill["victim"]["characterName"], 
+                 kill["victim"]["allianceName"],
+                 ship,
+                 value,
+                 url
+                )
     
+    @botcmd(template="recent")
+    def kill_recent(self, mess, args):
+        """Display the 10 most recent kills we've reported on"""        
+        return {'kills':self["recent"]}
+
     @botcmd(template="stats")
     def kill_stats(self, mess, args):
+        """Display some stats about kills we've seen."""
         return self["stats"]
 
     @botcmd(split_args_with=None)
@@ -157,7 +199,7 @@ class EveKills(BotPlugin):
         self.resetStomp()
         self.seen = []
         self["stats"] = {"checks":0, "lost":0, "killed":0, "errors":0}
-        return "Reset"
+        return "Reset Complete"
 
     @botcmd(split_args_with=None)
     def kill_announce(self, mess, args):
@@ -167,12 +209,26 @@ class EveKills(BotPlugin):
 
     @botcmd(split_args_with=None)
     def kill_watch(self, mess, args):
-        """Start watching an eve guy for kills/losses.  Specify a character name."""        
+        """Start watching an eve guy for both kills and losses.  Specify a character name."""        
+        return self._watch(mess, args, "all")
+
+    @botcmd(split_args_with=None)
+    def kill_losses(self, mess, args):
+        """Start watching an eve guy only for losses.  Specify a character name."""        
+        return self._watch(mess, args, "loss")
+
+    @botcmd(split_args_with=None)
+    def kill_kills(self, mess, args):
+        """Start watching an eve guy only for kills.  Specify a character name."""        
+        return self._watch(mess, args, "kill")
+
+
+    def _watch(self, mess, args, killType):
         try:
             characterName = " ".join(args)
             characterId = self._get_characer_id(characterName)
             
-            args = {'character_name':characterName, 'time': datetime.utcnow()}
+            args = {'character_name':characterName, 'time': datetime.utcnow(), 'type':killType}
             users = self["users"]
             users[characterId] = args
             self["users"] = users
@@ -186,10 +242,9 @@ class EveKills(BotPlugin):
         """Show everyone who is on the watch list."""
         now = datetime.utcnow()
         members = self["users"].values()
-        members = sorted(members, key=lambda member: member['character_name'])
+        members = sorted(members, key=lambda member: member['character_name'].lower())
         for member in members:            
             member['time_ago'] = ago.human(now - member['time'])
-
         return {'members': members}
 
     @botcmd(split_args_with=None)
@@ -204,7 +259,9 @@ class EveKills(BotPlugin):
             return "Something went wrong - %s" % e.message
 
         if characterId in self["users"]:
-            del self["users"][characterId]
+            users = self["users"]
+            del users[characterId]
+            self["users"] = users
             return "Done."
         else:
             return "Couldn't find that person."
